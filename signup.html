@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Hubcredo | Sign Up</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #e9f0ff 0%, #fefefe 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #1c2a52;
+      padding: 24px;
+    }
+
+    .auth-wrapper {
+      width: 100%;
+      max-width: 540px;
+      padding: 40px 32px;
+      background: #ffffff;
+      border-radius: 22px;
+      box-shadow: 0 16px 42px rgba(18, 44, 114, 0.18);
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 2rem;
+      text-align: center;
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      text-align: center;
+      color: #5a6385;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    input {
+      padding: 12px 14px;
+      border: 1px solid #d8def0;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #5c7cfa;
+      box-shadow: 0 0 0 3px rgba(92, 124, 250, 0.2);
+    }
+
+    button {
+      margin-top: 4px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      background: #5c7cfa;
+      color: #ffffff;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(92, 124, 250, 0.3);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+      box-shadow: none;
+    }
+
+    .footer-link {
+      margin-top: 20px;
+      text-align: center;
+      color: #5a6385;
+      font-size: 0.95rem;
+    }
+
+    .footer-link a {
+      color: #3c5cd6;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer-link a:hover {
+      text-decoration: underline;
+    }
+
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 18px;
+      color: #3c5cd6;
+      font-weight: 600;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-wrapper">
+    <a class="home-link" href="index.html">&#8592; Back to Hubcredo</a>
+    <h1>Create Account</h1>
+    <p class="subtitle">Start your Hubcredo journey by creating a new account.</p>
+
+    <form id="signup-form">
+      <input type="text" id="signup-name" placeholder="Name" required />
+      <input type="email" id="signup-email" placeholder="Email" required />
+      <input type="password" id="signup-password" placeholder="Password" required />
+      <button type="submit">Sign Up</button>
+    </form>
+
+    <p class="footer-link">Already have an account? <a href="login.html">Log in here</a>.</p>
+  </div>
+
+  <script src="auth-utils.js"></script>
+  <script>
+    const SIGNUP_BASE_URL = "https://soubam.app.n8n.cloud/webhook/hubcredo_signup";
+    const SUCCESS_PAGE = "success.html";
+    const FAILURE_PAGE = "unsuccessful.html";
+
+    async function callN8n(url, params) {
+      const fullUrl = new URL(url);
+      fullUrl.search = new URLSearchParams(params).toString();
+      const res = await fetch(fullUrl.toString(), { method: "GET" });
+      const raw = (await res.text()).trim();
+      try {
+        return { payload: JSON.parse(raw), raw };
+      } catch {
+        return { payload: raw, raw };
+      }
+    }
+
+    function getReturnValue(payload) {
+      if (payload && typeof payload === "object" && "return" in payload) {
+        const value = Number(payload.return);
+        return Number.isFinite(value) ? value : NaN;
+      }
+      if (typeof payload === "number") {
+        return Number.isFinite(payload) ? payload : NaN;
+      }
+      if (typeof payload === "string" && payload.length) {
+        const value = Number(payload);
+        return Number.isFinite(value) ? value : NaN;
+      }
+      return NaN;
+    }
+
+    function redirectByResult(payload) {
+      const value = getReturnValue(payload);
+      const isSuccess = value === 1;
+      window.location.href = isSuccess ? SUCCESS_PAGE : FAILURE_PAGE;
+    }
+
+    const form = document.getElementById("signup-form");
+    const passwordInput = document.getElementById("signup-password");
+    const button = form.querySelector("button[type='submit']");
+    button.dataset.originalText = button.textContent;
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      button.disabled = true;
+      button.textContent = "Creating account...";
+      try {
+        // Hash the password client-side so we never transmit the raw secret.
+        const passwordHash = await window.hashPassword(passwordInput.value);
+        const params = {
+          name: document.getElementById("signup-name").value,
+          email: document.getElementById("signup-email").value,
+          password_hash: passwordHash,
+        };
+        // Hubcredo webhook decides the redirect result based on the returned value.
+        const { payload } = await callN8n(SIGNUP_BASE_URL, params);
+        redirectByResult(payload);
+      } catch (error) {
+        window.location.href = FAILURE_PAGE;
+      } finally {
+        button.disabled = false;
+        button.textContent = button.dataset.originalText;
+      }
+    });
+  </script>
+</body>
+</html>
