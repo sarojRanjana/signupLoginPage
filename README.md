@@ -39,4 +39,4 @@ I created two webhooks in n8n: one for user signup and another for login. For th
 For login, the form collects the raw password, but JavaScript hashes it on the client side before submitting the request. The workflow receives the email and the hashed password, compares it with the stored hash in MySQL, and responds with either 1 for a successful match or 0 for an incorrect password.
 
 ## n8n Workflow visual
-https://github.com/sarojRanjana/signupLoginPage/blob/main/n8n-workflow.jpg
+![Image](https://github.com/sarojRanjana/signupLoginPage/blob/main/n8n-workflow.jpg)
