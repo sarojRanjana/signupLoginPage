@@ -19,16 +19,12 @@ The UI is intentionally simple: a landing page (`index.html`) that links to stan
 | `unsuccessful.html` | Failure screen with a retry link |
 
 ## Running Locally
+1. Visit `http://localhost:8000/index.html`.
+2. Choose **Create a new account** or **Log into Hubcredo**.
+3. Fill out the form. Password fields are plain text inputs, but the value is hashed in the browser before being sent over the network.
+4. After the webhook responds, the page redirects to `success.html` if `return` equals `1`, otherwise `unsuccessful.html`.
 
-1. Serve the folder with any static web server (or open the HTML files directly in a browser). Examples:
-   - macOS: `python3 -m http.server 8000`
-   - Node: `npx serve .`
-2. Visit `http://localhost:8000/index.html`.
-3. Choose **Create a new account** or **Log into Hubcredo**.
-4. Fill out the form. Password fields are plain text inputs, but the value is hashed in the browser before being sent over the network.
-5. After the webhook responds, the page redirects to `success.html` if `return` equals `1`, otherwise `unsuccessful.html`.
-
-> **Note:** The webhooks expect GET requests with query parameters; make sure the backend is reachable from your browser.
+> **Note:** The webhooks expect GET requests with query parameters.
 
 ## Implementation Notes
 
@@ -36,8 +32,11 @@ The UI is intentionally simple: a landing page (`index.html`) that links to stan
 - **Response handling:** Each form takes the raw webhook body, attempts to parse JSON, and falls back to the plain string. The shared `getReturnValue` helper checks for a `return` property or a top-level `"1"`/`"0"` string to determine success.
 - **Error handling:** Network failures or malformed responses send users to `unsuccessful.html`. Buttons are disabled while the request runs to avoid duplicate submissions.
 
-## Customization Tips
 
-- Update the webhook URLs in `signup.html` and `login.html` if your endpoints move.
-- Adjust the success/unsuccessful content to fit your brand voice.
-- If you need stronger client-side validation (e.g., password requirements), add it before calling `hashPassword`.
+## n8n Work flow
+I created two webhooks in n8n: one for user signup and another for login. For the signup workflow, the Webhook receives the name, email, and a password hash that is generated in the browser using JavaScript before the request is sent. A MySQL node checks whether a user with the same email already exists by running a SELECT COUNT(*) query. An IF node evaluates the result: if the count is not zero, the workflow responds with 0, indicating the email is already registered. If no existing record is found, the workflow inserts a new user into the database using the pre-hashed password, responds with 1, and triggers a follow-up step that sends a welcome email to the newly registered address.
+
+For login, the form collects the raw password, but JavaScript hashes it on the client side before submitting the request. The workflow receives the email and the hashed password, compares it with the stored hash in MySQL, and responds with either 1 for a successful match or 0 for an incorrect password.
+
+## n8n Workflow visual
+https://github.com/sarojRanjana/signupLoginPage/blob/main/n8n-workflow.jpg
